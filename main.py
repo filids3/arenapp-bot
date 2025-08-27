@@ -1,36 +1,41 @@
-import os
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
-
-# Cargar variables del .env (solo para pruebas locales)
-load_dotenv()
+import os
 
 TOKEN = os.getenv("TOKEN")
-if TOKEN is None:
-    raise ValueError("No se encontró el TOKEN. Configurá la variable de entorno correctamente.")
+GUILD_ID = 1410140145449046039  # tu servidor de prueba
 
-# Configurar intents
 intents = discord.Intents.default()
-intents.message_content = True  # necesario si vas a recibir mensajes normales
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Crear bot con setup_hook para cargar cogs y registrar slash commands
-class MyBot(commands.Bot):
-    def __init__(self):
-        super().__init__(command_prefix="!", intents=intents)
-
-    async def setup_hook(self):
-        # Cargar todos los cogs automáticamente
-        for filename in os.listdir("./cogs"):
-            if filename.endswith(".py"):
-                await self.load_extension(f"cogs.{filename[:-3]}")
-        # Registrar slash commands en Discord
-        await self.tree.sync()
-
-bot = MyBot()
-
+# -------------------------
+# Evento on_ready
+# -------------------------
 @bot.event
 async def on_ready():
     print(f"Conectado como {bot.user}")
+
+    # Registrar comandos para tu servidor (aparece al instante)
+    guild = discord.Object(id=GUILD_ID)
+    await bot.tree.sync(guild=guild)
+
+    # Registrar globalmente (tarda ~1 hora en otros servidores)
+    await bot.tree.sync()
+
+# -------------------------
+# Ejemplo de slash command
+# -------------------------
+@bot.tree.command(name="ping", description="Prueba instantánea en tu servidor")
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message("Pong!")
+
+# -------------------------
+# Cargar cogs automáticamente
+# -------------------------
+async def setup_hook():
+    for filename in ["ping", "cr_player"]:  # solo los cogs que existen
+        await bot.load_extension(f"cogs.{filename}")
+
+bot.setup_hook = setup_hook
 
 bot.run(TOKEN)
